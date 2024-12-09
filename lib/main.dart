@@ -32,9 +32,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String selectedLevel = 'All';
-  String selectedStatus = 'All';
   TextEditingController searchController = TextEditingController();
+  String searchQuery = '';
 
   @override
   void dispose() {
@@ -83,8 +82,10 @@ class _HomePageState extends State<HomePage> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      onChanged: (_) {
-                        setState(() {}); // Trigger filtering
+                      onChanged: (value) {
+                        setState(() {
+                          searchQuery = value.toLowerCase();
+                        });
                       },
                     ),
                   ),
@@ -105,24 +106,28 @@ class _HomePageState extends State<HomePage> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (!snapshot.hasData) {
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(child: Text('No exams available.'));
                 }
 
-                final exams = snapshot.data!.docs.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  return {
-                    'id': doc.id,
-                    'name': data['title'] ?? 'Unknown',
-                    'questions': data['q_shuffle'] ? 'Shuffled Questions' : 'Standard Questions',
-                    'dueDate': data['due_date']?.toDate().toString() ?? 'No due date',
-                    'author': data['uid'] ?? 'Unknown Author',
-                    'level': data['level'] ?? 'Unknown',
-                    'time': '${data['duration'] ?? 0} minutes',
-                    'attempts': data['attempts'] ?? 0,
-                    'status': (data['attempts'] ?? 0) > 0 ? 'Available' : 'Private',
-                  };
-                }).toList();
+                // Retrieve and filter exams based on search query
+                final exams = snapshot.data!.docs
+                    .map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return {
+                        'id': doc.id,
+                        'name': data['title']?.toString() ?? 'Unknown',
+                        'questions': data['q_shuffle'] ? 'Shuffled Questions' : 'Standard Questions',
+                        'dueDate': data['due_date']?.toDate().toString() ?? 'No due date',
+                        'author': data['uid'] ?? 'Unknown Author',
+                        'level': data['level'] ?? 'Unknown',
+                        'time': '${data['duration'] ?? 0} minutes',
+                        'attempts': data['attempts'] ?? 0,
+                        'status': (data['attempts'] ?? 0) > 0 ? 'Available' : 'Private',
+                      };
+                    })
+                    .where((exam) => exam['name'].toLowerCase().contains(searchQuery))
+                    .toList();
 
                 return ListView.builder(
                   itemCount: exams.length,
