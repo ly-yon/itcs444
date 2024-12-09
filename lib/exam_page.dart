@@ -13,7 +13,7 @@ class ExamPage extends StatefulWidget {
 
 class _ExamPageState extends State<ExamPage> {
   Map<String, dynamic>? examData;
-  Map<String, dynamic> answers = {}; // Map to store answers keyed by question_id
+  Map<int, dynamic> answers = {};
   late Timer timer;
   Duration timeRemaining = const Duration();
 
@@ -31,12 +31,10 @@ class _ExamPageState extends State<ExamPage> {
         examData = data;
         timeRemaining = Duration(minutes: data['duration'] ?? 0);
 
-        // Shuffle questions if q_shuffle is true
-        List<dynamic> questions = data['questions'] ?? [];
-        if (data['q_shuffle'] == true) {
-          questions.shuffle();
-        }
-        examData!['questions'] = questions; // Update the shuffled questions
+        // Shuffle questions while preserving question_id
+        final questions = List<dynamic>.from(data['questions'] ?? []);
+        questions.shuffle(); // Shuffle the questions
+        examData!['questions'] = questions;
       });
       startTimer();
     }
@@ -50,62 +48,55 @@ class _ExamPageState extends State<ExamPage> {
         });
       } else {
         timer.cancel();
-        onSubmit(timeOut: true); // Automatically submit when time runs out
+        onSubmit(feedback: 'Time is up!');
       }
     });
   }
 
   @override
   void dispose() {
-    if (timer.isActive) {
-      timer.cancel();
-    }
+    timer.cancel();
     super.dispose();
   }
 
-  void onSubmit({bool timeOut = false}) async {
+  Future<void> onSubmit({String feedback = 'Submitted successfully!'}) async {
     if (examData == null) return;
 
     try {
       // Prepare the response data
-      String responseId = FirebaseFirestore.instance.collection('responses').doc().id; // Generate unique ID
+      String responseId = FirebaseFirestore.instance.collection('responses').doc().id; // Generate a unique ID
       Map<String, dynamic> response = {
         'RID': responseId,
         'answers': [],
         'attempts_taken': (examData?['attempts'] ?? 1),
         'started_date': DateTime.now(),
-        'uid': 'student_user_id', // Replace with the actual user ID from your auth system
-        'feedback': timeOut ? 'Time out!' : 'Submitted successfully!',
+        'uid': 'student_user_id', // Replace with actual user ID
+        'feedback': feedback,
       };
 
       // Calculate marks and collect answers
       final questions = examData!['questions'] as List<dynamic>;
       int totalMarks = 0;
 
-      for (int i = 0; i < questions.length; i++) {
-        final question = questions[i];
-        final questionId = question['question_id'].toString(); // Ensure question_id is a string
+      for (final question in questions) {
+        final questionId = question['question_id']; // Get question_id
         final questionType = question['q_type'];
         final correctAnswer = question['answer'];
-        final userAnswer = answers[questionId]; // Use question_id to align answers
+        final userAnswer = answers[questionId];
 
         int marks = 0;
 
-        // Calculate marks based on question type
         if (questionType == 'mcq_question' || questionType == 't_f_question') {
           if (userAnswer != null && correctAnswer != null) {
             marks = (userAnswer.toString().trim() == correctAnswer.toString().trim()) ? question['marks'] : 0;
-          } else {
-            marks = 0; // Default to zero if userAnswer or correctAnswer is null
           }
-          totalMarks += marks; // Add to total marks
+          totalMarks += marks;
         } else if (questionType == 'short_question' || questionType == 'essay_question') {
           marks = 0; // Keep marks null for open-ended answers
         }
 
-        // Add the user's answer and marks to the response
         response['answers'].add({
-          'question_id': questionId,
+          'question_id': questionId, // Ensure the correct question_id is submitted
           'answer': userAnswer ?? 'No Answer',
           'mark': marks,
         });
@@ -128,7 +119,7 @@ class _ExamPageState extends State<ExamPage> {
       // Show success message and navigate back
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(timeOut ? 'Time is up! Exam submitted.' : 'Exam submitted successfully!')),
+          SnackBar(content: Text(feedback)),
         );
         Navigator.pop(context); // Go back to the main page
       }
@@ -204,7 +195,6 @@ class _ExamPageState extends State<ExamPage> {
               itemCount: questions.length,
               itemBuilder: (context, index) {
                 final question = questions[index];
-                final questionId = question['question_id'].toString();
                 final questionType = question['q_type'];
 
                 return Padding(
@@ -237,10 +227,10 @@ class _ExamPageState extends State<ExamPage> {
                                     (option) => RadioListTile(
                                       title: Text(option),
                                       value: option,
-                                      groupValue: answers[questionId],
+                                      groupValue: answers[question['question_id']],
                                       onChanged: (value) {
                                         setState(() {
-                                          answers[questionId] = value;
+                                          answers[question['question_id']] = value;
                                         });
                                       },
                                     ),
@@ -254,10 +244,10 @@ class _ExamPageState extends State<ExamPage> {
                                     (option) => RadioListTile(
                                       title: Text(option),
                                       value: option,
-                                      groupValue: answers[questionId],
+                                      groupValue: answers[question['question_id']],
                                       onChanged: (value) {
                                         setState(() {
-                                          answers[questionId] = value;
+                                          answers[question['question_id']] = value;
                                         });
                                       },
                                     ),
@@ -269,12 +259,10 @@ class _ExamPageState extends State<ExamPage> {
                               maxLines: questionType == 'essay_question' ? 5 : 1,
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
-                                                                hintText: 'Type your answer here...',
+                                hintText: 'Type your answer here...',
                               ),
                               onChanged: (value) {
-                                setState(() {
-                                  answers[questionId] = value;
-                                });
+                                answers[question['question_id']] = value;
                               },
                             ),
                           ],
@@ -285,12 +273,11 @@ class _ExamPageState extends State<ExamPage> {
                 );
               },
             ),
-            const SizedBox(height: 16),
             // Submit Button
             Center(
               child: ElevatedButton(
                 onPressed: () {
-                  onSubmit(); // Submit the exam
+                  onSubmit();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2C2F48),
@@ -299,7 +286,7 @@ class _ExamPageState extends State<ExamPage> {
                 child: const Text(
                   'Submit',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
