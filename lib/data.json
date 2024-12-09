@@ -1,0 +1,33 @@
+{
+  "EID": "9MbmQ4GsijAgynlPrD2v",
+  "attempts": 2,
+  "due_date": { "timestamp": { "second": 178550000 } },
+  "duration": 10,
+  "q_shuffle": true,
+  "level": "easy",
+  "questions": [
+    {
+      "answer": "is Sorted?",
+      "marks": 4,
+      "options": ["Is Sorted?", "Array 1", "Array 2", "Array 3"],
+      "q_name": "Array [1,3,5,2,4]",
+      "q_type": "mcq_question",
+      "shuffle": true
+    },
+    {
+      "marks": 3,
+      "q_name": "What are the array types?",
+      "q_type": "short_question"
+    },
+    {
+      "answer": "True",
+      "marks": 4,
+      "options": ["True", "False"],
+      "q_name": "Did you join the IT Club?",
+      "q_type": "t_f_question",
+      "shuffle": false
+    }
+  ],
+  "title": "ITCS113",
+  "uid": "CtAeNRV9MNPlvN956p8rj4Vkc4I3"
+}

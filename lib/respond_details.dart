@@ -187,24 +187,80 @@ class _detailsState extends State<details> {
                 ],
               ),
             ),
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: ElevatedButton(
+                  style: ButtonStyle(
+                      backgroundColor:
+                          MaterialStatePropertyAll(Color(0xff2a364e))),
+                  onPressed: () {
+                    showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          TextEditingController feedback =
+                              TextEditingController(
+                                  text: widget.userAnswers["feedback"] != null
+                                      ? widget.userAnswers["feedback"]
+                                      : "");
+                          return AlertDialog(
+                            title: Text("ADD Feedback"),
+                            content: TextField(
+                              controller: feedback,
+                              cursorColor: Color(0xff2a364e),
+                              decoration: const InputDecoration(
+                                  disabledBorder: UnderlineInputBorder(
+                                      borderSide:
+                                          BorderSide(color: Colors.black)),
+                                  labelText: 'Enter The Text',
+                                  labelStyle:
+                                      TextStyle(color: Color(0xff2a364e))),
+                            ),
+                            actions: [
+                              TextButton(
+                                  onPressed: () {
+                                    if (feedback.text != "") {
+                                      widget.userAnswers["feedback"] =
+                                          feedback.text;
+                                    }
+                                    setState(() {});
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text("Add")),
+                              TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text("Cancel"))
+                            ],
+                          );
+                        });
+                  },
+                  child: Text(widget.userAnswers["feedback"] != null
+                      ? "+ Edit Feedback"
+                      : "+ Add Feedback")),
+            ),
             ListView.builder(
                 itemCount: Questions["questions"].length,
                 shrinkWrap: true,
                 scrollDirection: Axis.vertical,
                 itemBuilder: (context, index) {
-                  switch (Questions["questions"][index]["q_type"]) {
+                  switch (Questions["questions"]
+                          [userAnswers["answers"][index]["question_id"]]
+                      ["q_type"]) {
                     case "t_f_question":
                     case "mcq_question":
                       return option_question(
                         index: index,
-                        data: Questions["questions"][index],
+                        data: Questions["questions"]
+                            [userAnswers["answers"][index]["question_id"]],
                         userAnswer: userAnswers["answers"][index],
                         update: update,
                       );
                     default:
                       return question(
                         index: index,
-                        data: Questions["questions"][index],
+                        data: Questions["questions"]
+                            [userAnswers["answers"][index]["question_id"]],
                         userAnswer: userAnswers["answers"][index],
                         update: update,
                       );
@@ -215,13 +271,16 @@ class _detailsState extends State<details> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
+                  style: ButtonStyle(
+                      backgroundColor:
+                          MaterialStatePropertyAll(Color(0xff2a364e))),
                   onPressed: () {
                     updateGrades(widget.Questions["EID"],
                         widget.userAnswers["RID"], widget.userAnswers);
                     Navigator.pop(context);
                     setState(() {});
                   },
-                  child: Text("Publish Exam")),
+                  child: Text("Apply Updates")),
             ),
           ],
         ),

@@ -2,26 +2,29 @@ import 'package:flutter/material.dart';
 import 'add_Exam.dart';
 import 'single_exam_marks.dart';
 import 'firebase.dart';
+import 'package:provider/provider.dart';
+import 'authProvider.dart';
+import "homePage.dart";
 
-String uid = "CtAeNRV9MNPlvN956p8rj4Vkc4I3";
 final Map<String, Color?> levelColor = {
   "Easy": Colors.green,
   "Medium": Colors.yellow[700],
   "Hard": const Color.fromARGB(255, 190, 0, 0)
 };
 
-class Home extends StatefulWidget {
-  const Home({super.key});
+class adminPage extends StatefulWidget {
+  const adminPage({super.key});
 
   @override
-  State<Home> createState() => _HomeState();
+  State<adminPage> createState() => _adminPageState();
 }
 
-class _HomeState extends State<Home> {
+class _adminPageState extends State<adminPage> {
   int currentPageIndex = 0;
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xffe9edf6),
@@ -33,30 +36,47 @@ class _HomeState extends State<Home> {
         child: ListView(
           children: <Widget>[
             DrawerHeader(
-                decoration: BoxDecoration(color: Color(0xff2a364e)),
-                child: Container(
-                  child: Column(
-                    children: <Widget>[
-                      Material(
-                          borderRadius: BorderRadius.all(Radius.circular(40.0)),
-                          elevation: 10,
-                          child: Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Icon(
-                              Icons.person,
-                              size: 40,
-                            ),
-                          )),
-                      Padding(
-                        padding: EdgeInsets.all(5.0),
-                        child: Text(
-                          'Ahmed Abdulla',
-                          style: TextStyle(fontSize: 25, color: Colors.white),
+              decoration: BoxDecoration(color: Color(0xff2a364e)),
+              child: Column(
+                children: <Widget>[
+                  Material(
+                      borderRadius: BorderRadius.all(Radius.circular(40.0)),
+                      elevation: 10,
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Icon(
+                          Icons.person,
+                          size: 40,
                         ),
-                      )
-                    ],
-                  ),
-                )),
+                      )),
+                  Padding(
+                    padding: EdgeInsets.all(5.0),
+                    child: FutureBuilder(
+                      future: getUserbyID(authProvider.user?.uid ?? ""),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Center(
+                            child: Text(
+                              "Error Retrieving User Data!",
+                              style: TextStyle(fontSize: 18),
+                            ),
+                          );
+                        }
+
+                        return Text(
+                          snapshot.data![0]["name"],
+                          style: TextStyle(fontSize: 25, color: Colors.white),
+                        );
+                      },
+                    ),
+                  )
+                ],
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: Container(
@@ -70,7 +90,7 @@ class _HomeState extends State<Home> {
                       Padding(
                         padding: const EdgeInsets.all(5.0),
                         child: Text(
-                          "Role : Admin",
+                          "Role : ${authProvider.role}",
                           style: TextStyle(fontSize: 17.0),
                         ),
                       )
@@ -92,7 +112,7 @@ class _HomeState extends State<Home> {
                       Padding(
                         padding: const EdgeInsets.all(5.0),
                         child: Text(
-                          "Email: ahmedabdulla@gmail.com",
+                          "Email: ${authProvider.user?.email ?? "No Email"}",
                           style: TextStyle(fontSize: 17.0),
                         ),
                       ),
@@ -107,32 +127,18 @@ class _HomeState extends State<Home> {
                 decoration: BoxDecoration(
                     border: Border(
                         bottom: BorderSide(color: Colors.grey.shade400))),
-                child: Container(
-                  height: 35.0,
-                  child: Row(
-                    children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.all(5.0),
-                        child: Text(
-                          "User ID: 553213443",
-                          style: TextStyle(fontSize: 17.0),
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Container(
-                decoration: BoxDecoration(
-                    border: Border(
-                        bottom: BorderSide(color: Colors.grey.shade400))),
                 child: InkWell(
                   splashColor: Color(0xff2a364e),
-                  onTap: () {},
-                  child: Container(
+                  onTap: () async {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const homePage()),
+                      (Route route) => false,
+                    );
+
+                    return await authProvider.signOut();
+                  },
+                  child: const SizedBox(
                     height: 35.0,
                     child: Row(
                       children: <Widget>[
@@ -155,12 +161,12 @@ class _HomeState extends State<Home> {
         ),
       ),
       bottomNavigationBar: NavigationBar(
-        backgroundColor: Color(0xffe9edf6),
+        backgroundColor: const Color(0xffe9edf6),
         onDestinationSelected: (int index) {
           currentPageIndex = index;
           setState(() {});
         },
-        indicatorColor: Color(0xff2a364e),
+        indicatorColor: const Color(0xff2a364e),
         selectedIndex: currentPageIndex,
         destinations: const <Widget>[
           NavigationDestination(
@@ -182,13 +188,16 @@ class _HomeState extends State<Home> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Color.fromARGB(255, 190, 208, 250),
+        backgroundColor: const Color.fromARGB(255, 190, 208, 250),
         foregroundColor: Colors.black,
         onPressed: () {
           currentPageIndex = -1;
           Navigator.push(
-                  context, MaterialPageRoute(builder: (context) => AddExam()))
-              .then((value) {
+              context,
+              MaterialPageRoute(
+                  builder: (context) => AddExam(
+                        uid: authProvider.user?.uid ?? "",
+                      ))).then((value) {
             currentPageIndex = 0;
             setState(() {});
           });
@@ -196,7 +205,7 @@ class _HomeState extends State<Home> {
         label: const Text('New Exam'),
         icon: const Icon(Icons.add),
       ),
-      backgroundColor: Color(0xff2a364e),
+      backgroundColor: const Color(0xff2a364e),
       body: ManagePages(
         index: currentPageIndex,
       ),
@@ -216,28 +225,29 @@ class _ManagePageaState extends State<ManagePages> {
   @override
   Widget build(BuildContext context) {
     if (widget.index == 0) {
-      return const HomePage();
+      return const adminHomePage();
     } else {
       return const Marks();
     }
   }
 }
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class adminHomePage extends StatefulWidget {
+  const adminHomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<adminHomePage> createState() => _adminHomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _adminHomePageState extends State<adminHomePage> {
   @override
   Widget build(BuildContext context) {
+    String uid = context.watch<AuthProvider>().user?.uid ?? "";
     return StreamBuilder<dynamic>(
         stream: getExamsByID(uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Column(
@@ -245,7 +255,7 @@ class _HomePageState extends State<HomePage> {
                 Container(
                   margin: const EdgeInsets.all(16),
                   height: MediaQuery.of(context).size.height / 2.7,
-                  child: Column(
+                  child: const Column(
                     children: [
                       Text(
                         "My Available Tests",
@@ -265,7 +275,7 @@ class _HomePageState extends State<HomePage> {
                   child: Container(
                     margin: const EdgeInsets.all(16),
                     // height: MediaQuery.of(context).size.height / 2,
-                    child: Column(
+                    child: const Column(
                       children: [
                         Text(
                           "My Expired Tests",
@@ -303,7 +313,7 @@ class _HomePageState extends State<HomePage> {
                 height: MediaQuery.of(context).size.height / 2.7,
                 child: Column(
                   children: [
-                    Text(
+                    const Text(
                       "My Available Tests",
                       style: TextStyle(color: Colors.white, fontSize: 24),
                     ),
@@ -317,7 +327,8 @@ class _HomePageState extends State<HomePage> {
                                     horizontal: 16.0, vertical: 8.0),
                                 elevation: 3,
                                 child: InkWell(
-                                  splashColor: Color.fromARGB(96, 42, 54, 78),
+                                  splashColor:
+                                      const Color.fromARGB(96, 42, 54, 78),
                                   // Alert Dialog For Delete / Edit / Cancel
                                   onTap: () {
                                     showDialog(
@@ -338,6 +349,7 @@ class _HomePageState extends State<HomePage> {
                                                                     AddExam(
                                                                       data: activeData[
                                                                           index],
+                                                                      uid: uid,
                                                                     )));
                                                   },
                                                   child: const Text("Edit")),
@@ -375,7 +387,7 @@ class _HomePageState extends State<HomePage> {
                                           Text(
                                               '${activeData[index]["questions"].length} Questions'),
                                           Text(
-                                              'Due: ${activeData[index]["due_date"].toDate()}'),
+                                              'Due: ${activeData[index]["due_date"].toDate().toString().split(" ")[0]}'),
                                           const SizedBox(
                                               height:
                                                   4), // Added space between subtitle and attempts
@@ -385,14 +397,14 @@ class _HomePageState extends State<HomePage> {
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.timer,
                                             color: Colors.green,
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
                                             '${activeData[index]["duration"]} Min',
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               color: Colors.green,
                                             ),
                                           ),
@@ -412,7 +424,7 @@ class _HomePageState extends State<HomePage> {
                   // height: MediaQuery.of(context).size.height / 2,
                   child: Column(
                     children: [
-                      Text(
+                      const Text(
                         "My Expired Tests",
                         style: TextStyle(color: Colors.white, fontSize: 24),
                       ),
@@ -426,7 +438,8 @@ class _HomePageState extends State<HomePage> {
                                       horizontal: 16.0, vertical: 8.0),
                                   elevation: 3,
                                   child: InkWell(
-                                    splashColor: Color.fromARGB(96, 42, 54, 78),
+                                    splashColor:
+                                        const Color.fromARGB(96, 42, 54, 78),
                                     // Alert Dialog For Delete / Edit / Cancel
                                     onTap: () {
                                       showDialog(
@@ -447,6 +460,8 @@ class _HomePageState extends State<HomePage> {
                                                                       AddExam(
                                                                         data: expiredDate[
                                                                             index],
+                                                                        uid:
+                                                                            uid,
                                                                       )));
                                                     },
                                                     child: const Text("Edit")),
@@ -485,13 +500,13 @@ class _HomePageState extends State<HomePage> {
                                             Text(
                                                 '${expiredDate[index]["questions"].length} Questions'),
                                             Text(
-                                                'Due: ${expiredDate[index]["due_date"].toDate()}'),
+                                                'Due: ${expiredDate[index]["due_date"].toDate().toString().split(" ")[0]}'),
                                             const SizedBox(
                                                 height:
                                                     4), // Added space between subtitle and attempts
                                           ],
                                         ),
-                                        trailing: Column(
+                                        trailing: const Column(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
@@ -499,7 +514,7 @@ class _HomePageState extends State<HomePage> {
                                               Icons.timer,
                                               color: Colors.red,
                                             ),
-                                            const SizedBox(height: 4),
+                                            SizedBox(height: 4),
                                             Text(
                                               'Expired',
                                               style: TextStyle(
@@ -546,14 +561,15 @@ class _MarksState extends State<Marks> {
   String selectedStatus = "All";
   @override
   Widget build(BuildContext context) {
+    String uid = context.watch<AuthProvider>().user?.uid ?? "";
     return StreamBuilder<dynamic>(
         stream: getExamsByID(uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
+            return const Center(
               child: Text(
                 "Create A New Exam!",
                 style: TextStyle(color: Colors.white, fontSize: 18),
@@ -592,24 +608,25 @@ class _MarksState extends State<Marks> {
           );
 
           return Container(
-            padding: EdgeInsets.all(3),
+            padding: const EdgeInsets.all(3),
             child: Column(
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 50),
+                  padding: const EdgeInsets.symmetric(horizontal: 50),
                   // foregroundDecoration: BoxDecoration(color: Colors.white),
                   child: Row(
                     children: [
-                      Text("Level: ", style: TextStyle(color: Colors.white)),
+                      const Text("Level: ",
+                          style: TextStyle(color: Colors.white)),
                       DropdownButton<String>(
                         value: selectedLevel,
-                        dropdownColor: Color(0xff2a364e),
+                        dropdownColor: const Color(0xff2a364e),
                         items: levelSelection.map((e) {
                           return DropdownMenuItem<String>(
                             value: e,
                             child: Text(
                               e,
-                              style: TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Colors.white),
                             ),
                           );
                         }).toList(),
@@ -624,17 +641,17 @@ class _MarksState extends State<Marks> {
                           child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text("Status: ",
+                          const Text("Status: ",
                               style: TextStyle(color: Colors.white)),
                           DropdownButton<String>(
                             value: selectedStatus,
-                            dropdownColor: Color(0xff2a364e),
+                            dropdownColor: const Color(0xff2a364e),
                             items: statusSelection.map((e) {
                               return DropdownMenuItem<String>(
                                 value: e,
                                 child: Text(
                                   e,
-                                  style: TextStyle(color: Colors.white),
+                                  style: const TextStyle(color: Colors.white),
                                 ),
                               );
                             }).toList(),
@@ -661,7 +678,7 @@ class _MarksState extends State<Marks> {
                                 horizontal: 16.0, vertical: 8.0),
                             elevation: 3,
                             child: InkWell(
-                              splashColor: Color.fromARGB(96, 42, 54, 78),
+                              splashColor: const Color.fromARGB(96, 42, 54, 78),
                               // Alert Dialog For Delete / Edit / Cancel
                               onTap: () {
                                 Navigator.push(
@@ -694,7 +711,7 @@ class _MarksState extends State<Marks> {
                                       Text(
                                           '${filteredData[index]["questions"].length} Questions'),
                                       Text(
-                                          'Due: Due: ${filteredData[index]["due_date"].toDate()}'),
+                                          'Due: Due: ${filteredData[index]["due_date"].toDate().toString().split(" ")[0]}'),
                                       const SizedBox(
                                           height:
                                               4), // Added space between subtitle and attempts
@@ -726,7 +743,7 @@ class _MarksState extends State<Marks> {
                                                         null
                                                     ? "0"
                                                     : snapshot.data.toString(),
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: Colors.white,
                                                 ),
@@ -754,7 +771,7 @@ class _MarksState extends State<Marks> {
                             ),
                           );
                         })),
-                SizedBox(
+                const SizedBox(
                   height: 30,
                 )
               ],

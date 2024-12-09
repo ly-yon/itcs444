@@ -5,9 +5,8 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import "firebase.dart";
 import 'home_page_admin.dart';
 
-final String UID = "CtAeNRV9MNPlvN956p8rj4Vkc4I3";
-
 class Option_Question_data {
+  int question_id;
   String type;
   String question = "";
   int? Marks = 0;
@@ -18,15 +17,16 @@ class Option_Question_data {
   String Answer = "";
   bool shuffle = false;
   bool error = false;
-  Option_Question_data(this.type);
+  Option_Question_data(this.type, this.question_id);
 }
 
 class Question_data {
+  int question_id;
   String type;
   String question = "";
   int? Marks = 0;
   bool error = false;
-  Question_data(this.type);
+  Question_data(this.type, this.question_id);
 }
 
 List question_to_json(List questions) {
@@ -36,6 +36,7 @@ List question_to_json(List questions) {
       case "t_f_question":
       case "mcq_question":
         return res.add({
+          "question_id": element.question_id,
           "q_type": element.type,
           "q_name": element.question,
           "marks": element.Marks,
@@ -45,6 +46,7 @@ List question_to_json(List questions) {
         });
       default:
         return res.add({
+          "question_id": element.question_id,
           "q_type": element.type,
           "q_name": element.question,
           "marks": element.Marks,
@@ -60,7 +62,8 @@ List json_to_question(List questions) {
     switch (questions[i]["q_type"]) {
       case "t_f_question":
         {
-          res.add(Option_Question_data("t_f_question"));
+          res.add(Option_Question_data(
+              "t_f_question", questions[i]["question_id"]));
           res[res.length - 1].Marks = questions[i]["marks"];
           res[res.length - 1].options = questions[i]["options"];
           res[res.length - 1].Answer = questions[i]["answer"];
@@ -71,7 +74,8 @@ List json_to_question(List questions) {
         }
       case "mcq_question":
         {
-          res.add(Option_Question_data("mcq_question"));
+          res.add(Option_Question_data(
+              "mcq_question", questions[i]["question_id"]));
           res[res.length - 1].Marks = questions[i]["marks"];
           res[res.length - 1].options = questions[i]["options"];
           res[res.length - 1].Answer = questions[i]["answer"];
@@ -82,7 +86,7 @@ List json_to_question(List questions) {
         }
       case "essay_question":
         {
-          res.add(Question_data("essay_question"));
+          res.add(Question_data("essay_question", questions[i]["question_id"]));
           res[res.length - 1].Marks = questions[i]["marks"];
           res[res.length - 1].question = questions[i]["q_name"];
           res[res.length - 1].error = false;
@@ -90,7 +94,7 @@ List json_to_question(List questions) {
         }
       case "short_question":
         {
-          res.add(Question_data("short_question"));
+          res.add(Question_data("short_question", questions[i]["question_id"]));
           res[res.length - 1].Marks = questions[i]["marks"];
           res[res.length - 1].question = questions[i]["q_name"];
           res[res.length - 1].error = false;
@@ -107,7 +111,8 @@ List json_to_question(List questions) {
 
 class AddExam extends StatefulWidget {
   Map<String, dynamic>? data;
-  AddExam({Key? key, this.data}) : super(key: key);
+  String uid;
+  AddExam({Key? key, this.data, required this.uid}) : super(key: key);
 
   @override
   State<AddExam> createState() => _AddExamState();
@@ -140,7 +145,6 @@ class _AddExamState extends State<AddExam> {
     'Easy',
     'Medium',
     'Hard',
-    'Extrodinary',
   ];
   final List<String> durationSelection = <String>[
     'Minutes',
@@ -226,7 +230,9 @@ class _AddExamState extends State<AddExam> {
     if (widget.data != null) {
       id = widget.data!["EID"];
       Questions = json_to_question(widget.data!["questions"]);
-      selectedAttempt = widget.data!["attempts"].toString();
+      if (widget.data!["attempts"] <= 10) {
+        selectedAttempt = widget.data!["attempts"].toString();
+      }
       selectedDuration = "Minutes";
       duration.text = widget.data!["duration"].toString();
       selectedLavel = widget.data!["level"];
@@ -262,10 +268,12 @@ class _AddExamState extends State<AddExam> {
                           Questions[Questions.length - 1].error =
                               validation(Questions.length - 1);
                           if (!Questions[Questions.length - 1].error)
-                            Questions.add(Option_Question_data("t_f_question"));
+                            Questions.add(Option_Question_data(
+                                "t_f_question", Questions.length));
                           setState(() {});
                         } else {
-                          Questions.add(Option_Question_data("t_f_question"));
+                          Questions.add(Option_Question_data(
+                              "t_f_question", Questions.length));
                           setState(() {});
                         }
                       },
@@ -278,10 +286,12 @@ class _AddExamState extends State<AddExam> {
                           Questions[Questions.length - 1].error =
                               validation(Questions.length - 1);
                           if (!Questions[Questions.length - 1].error)
-                            Questions.add(Option_Question_data("mcq_question"));
+                            Questions.add(Option_Question_data(
+                                "mcq_question", Questions.length));
                           setState(() {});
                         } else {
-                          Questions.add(Option_Question_data("mcq_question"));
+                          Questions.add(Option_Question_data(
+                              "mcq_question", Questions.length));
                           setState(() {});
                         }
                       },
@@ -294,10 +304,12 @@ class _AddExamState extends State<AddExam> {
                           Questions[Questions.length - 1].error =
                               validation(Questions.length - 1);
                           if (!Questions[Questions.length - 1].error)
-                            Questions.add(Question_data("essay_question"));
+                            Questions.add(Question_data(
+                                "essay_question", Questions.length));
                           setState(() {});
                         } else {
-                          Questions.add(Question_data("essay_question"));
+                          Questions.add(Question_data(
+                              "essay_question", Questions.length));
                           setState(() {});
                         }
                       },
@@ -310,10 +322,12 @@ class _AddExamState extends State<AddExam> {
                           Questions[Questions.length - 1].error =
                               validation(Questions.length - 1);
                           if (!Questions[Questions.length - 1].error)
-                            Questions.add(Question_data("short_question"));
+                            Questions.add(Question_data(
+                                "short_question", Questions.length));
                           setState(() {});
                         } else {
-                          Questions.add(Question_data("short_question"));
+                          Questions.add(Question_data(
+                              "short_question", Questions.length));
                           setState(() {});
                         }
                       },
@@ -403,15 +417,20 @@ class _AddExamState extends State<AddExam> {
               child: Row(children: [
                 Padding(padding: EdgeInsets.all(8), child: Text("Due Date :")),
                 Expanded(
-                    child: Align(
-                  alignment: Alignment.centerRight,
+                    child: Container(
+                  alignment: Alignment.center,
                   child: TextButton(
                     onPressed: () {
                       _selectDate(context);
                     },
-                    child: Text(
-                      Date.toString(),
-                      style: const TextStyle(color: Color(0xff2a364e)),
+                    child: Container(
+                      width: double.maxFinite,
+                      height: 50,
+                      alignment: Alignment.center,
+                      child: Text(
+                        Date.toString().split(' ')[0],
+                        style: const TextStyle(color: Color(0xff2a364e)),
+                      ),
                     ),
                   ),
                 )),
@@ -499,11 +518,17 @@ class _AddExamState extends State<AddExam> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
+                        style: ButtonStyle(
+                            backgroundColor:
+                                MaterialStatePropertyAll(Color(0xff2a364e))),
                         onPressed: () {
                           if (submission_validation(
                               Questions, title.text, duration.text)) {
+                            if (selectedAttempt == "No Limit") {
+                              selectedAttempt = "999999";
+                            }
                             addExam({
-                              "UID": UID,
+                              "uid": widget.uid,
                               "attempts": int.parse(selectedAttempt),
                               "due_date": Date,
                               "duration": (int.parse(duration.text) *
