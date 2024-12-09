@@ -13,7 +13,7 @@ class ExamPage extends StatefulWidget {
 
 class _ExamPageState extends State<ExamPage> {
   Map<String, dynamic>? examData;
-  Map<int, dynamic> answers = {};
+  Map<String, dynamic> answers = {}; // Map to store answers keyed by question_id
   late Timer timer;
   Duration timeRemaining = const Duration();
 
@@ -30,6 +30,13 @@ class _ExamPageState extends State<ExamPage> {
       setState(() {
         examData = data;
         timeRemaining = Duration(minutes: data['duration'] ?? 0);
+
+        // Shuffle questions if q_shuffle is true
+        List<dynamic> questions = data['questions'] ?? [];
+        if (data['q_shuffle'] == true) {
+          questions.shuffle();
+        }
+        examData!['questions'] = questions; // Update the shuffled questions
       });
       startTimer();
     }
@@ -43,25 +50,93 @@ class _ExamPageState extends State<ExamPage> {
         });
       } else {
         timer.cancel();
-        // Handle time-out logic
+        onSubmit(timeOut: true); // Automatically submit when time runs out
       }
     });
   }
 
   @override
   void dispose() {
-    timer.cancel();
+    if (timer.isActive) {
+      timer.cancel();
+    }
     super.dispose();
   }
 
-  void onSubmit() async {
-    // Decrement attempts in Firestore
-    final attempts = (examData?['attempts'] ?? 1) - 1;
-    await FirebaseFirestore.instance.collection('exams').doc(widget.examId).update({'attempts': attempts});
+  void onSubmit({bool timeOut = false}) async {
+    if (examData == null) return;
 
-    // Navigate back to main page
-    if (mounted) {
-      Navigator.pop(context);
+    try {
+      // Prepare the response data
+      String responseId = FirebaseFirestore.instance.collection('responses').doc().id; // Generate unique ID
+      Map<String, dynamic> response = {
+        'RID': responseId,
+        'answers': [],
+        'attempts_taken': (examData?['attempts'] ?? 1),
+        'started_date': DateTime.now(),
+        'uid': 'student_user_id', // Replace with the actual user ID from your auth system
+        'feedback': timeOut ? 'Time out!' : 'Submitted successfully!',
+      };
+
+      // Calculate marks and collect answers
+      final questions = examData!['questions'] as List<dynamic>;
+      int totalMarks = 0;
+
+      for (int i = 0; i < questions.length; i++) {
+        final question = questions[i];
+        final questionId = question['question_id'].toString(); // Ensure question_id is a string
+        final questionType = question['q_type'];
+        final correctAnswer = question['answer'];
+        final userAnswer = answers[questionId]; // Use question_id to align answers
+
+        int marks = 0;
+
+        // Calculate marks based on question type
+        if (questionType == 'mcq_question' || questionType == 't_f_question') {
+          if (userAnswer != null && correctAnswer != null) {
+            marks = (userAnswer.toString().trim() == correctAnswer.toString().trim()) ? question['marks'] : 0;
+          } else {
+            marks = 0; // Default to zero if userAnswer or correctAnswer is null
+          }
+          totalMarks += marks; // Add to total marks
+        } else if (questionType == 'short_question' || questionType == 'essay_question') {
+          marks = 0; // Keep marks null for open-ended answers
+        }
+
+        // Add the user's answer and marks to the response
+        response['answers'].add({
+          'question_id': questionId,
+          'answer': userAnswer ?? 'No Answer',
+          'mark': marks,
+        });
+      }
+
+      response['total_marks'] = totalMarks;
+
+      // Submit the response to Firestore
+      await FirebaseFirestore.instance
+          .collection('exams')
+          .doc(widget.examId)
+          .collection('responses')
+          .doc(responseId)
+          .set(response);
+
+      // Decrement attempts
+      final remainingAttempts = (examData?['attempts'] ?? 1) - 1;
+      await FirebaseFirestore.instance.collection('exams').doc(widget.examId).update({'attempts': remainingAttempts});
+
+      // Show success message and navigate back
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(timeOut ? 'Time is up! Exam submitted.' : 'Exam submitted successfully!')),
+        );
+        Navigator.pop(context); // Go back to the main page
+      }
+    } catch (error) {
+      print("Error during submission: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Submission failed: $error')),
+      );
     }
   }
 
@@ -93,7 +168,6 @@ class _ExamPageState extends State<ExamPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            
             // Exam Progress Card
             Card(
               color: Colors.grey[200],
@@ -130,6 +204,7 @@ class _ExamPageState extends State<ExamPage> {
               itemCount: questions.length,
               itemBuilder: (context, index) {
                 final question = questions[index];
+                final questionId = question['question_id'].toString();
                 final questionType = question['q_type'];
 
                 return Padding(
@@ -162,10 +237,10 @@ class _ExamPageState extends State<ExamPage> {
                                     (option) => RadioListTile(
                                       title: Text(option),
                                       value: option,
-                                      groupValue: answers[index],
+                                      groupValue: answers[questionId],
                                       onChanged: (value) {
                                         setState(() {
-                                          answers[index] = value;
+                                          answers[questionId] = value;
                                         });
                                       },
                                     ),
@@ -179,10 +254,10 @@ class _ExamPageState extends State<ExamPage> {
                                     (option) => RadioListTile(
                                       title: Text(option),
                                       value: option,
-                                      groupValue: answers[index],
+                                      groupValue: answers[questionId],
                                       onChanged: (value) {
                                         setState(() {
-                                          answers[index] = value;
+                                          answers[questionId] = value;
                                         });
                                       },
                                     ),
@@ -194,10 +269,12 @@ class _ExamPageState extends State<ExamPage> {
                               maxLines: questionType == 'essay_question' ? 5 : 1,
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
-                                hintText: 'Type your answer here...',
+                                                                hintText: 'Type your answer here...',
                               ),
                               onChanged: (value) {
-                                answers[index] = value;
+                                setState(() {
+                                  answers[questionId] = value;
+                                });
                               },
                             ),
                           ],
@@ -208,11 +285,12 @@ class _ExamPageState extends State<ExamPage> {
                 );
               },
             ),
+            const SizedBox(height: 16),
             // Submit Button
             Center(
               child: ElevatedButton(
                 onPressed: () {
-                  onSubmit();
+                  onSubmit(); // Submit the exam
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2C2F48),
