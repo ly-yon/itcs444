@@ -33,7 +33,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   TextEditingController searchController = TextEditingController();
-  String searchQuery = '';
 
   @override
   void dispose() {
@@ -82,10 +81,8 @@ class _HomePageState extends State<HomePage> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      onChanged: (value) {
-                        setState(() {
-                          searchQuery = value.toLowerCase();
-                        });
+                      onChanged: (_) {
+                        setState(() {}); // Trigger filtering
                       },
                     ),
                   ),
@@ -106,17 +103,16 @@ class _HomePageState extends State<HomePage> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                if (!snapshot.hasData) {
                   return const Center(child: Text('No exams available.'));
                 }
 
-                // Retrieve and filter exams based on search query
                 final exams = snapshot.data!.docs
                     .map((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       return {
                         'id': doc.id,
-                        'name': data['title']?.toString() ?? 'Unknown',
+                        'name': data['title'] ?? 'Unknown',
                         'questions': data['q_shuffle'] ? 'Shuffled Questions' : 'Standard Questions',
                         'dueDate': data['due_date']?.toDate().toString() ?? 'No due date',
                         'author': data['uid'] ?? 'Unknown Author',
@@ -126,7 +122,11 @@ class _HomePageState extends State<HomePage> {
                         'status': (data['attempts'] ?? 0) > 0 ? 'Available' : 'Private',
                       };
                     })
-                    .where((exam) => exam['name'].toLowerCase().contains(searchQuery))
+                    .where((exam) =>
+                        exam['name']
+                            .toString()
+                            .toLowerCase()
+                            .contains(searchController.text.toLowerCase()))
                     .toList();
 
                 return ListView.builder(
