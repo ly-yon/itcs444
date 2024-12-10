@@ -4,7 +4,7 @@ import 'loginPage.dart';
 import 'home_page_admin.dart';
 import 'package:provider/provider.dart';
 import 'authProvider.dart';
-import 'main-2.dart';
+import 'student_home_page.dart';
 
 class signUpPage extends StatefulWidget {
   const signUpPage({super.key});
@@ -37,6 +37,7 @@ class _signUpPageState extends State<signUpPage> {
     return Scaffold(
       backgroundColor: Color(0xFF2A364E),
       appBar: AppBar(
+        foregroundColor: Colors.black,
         title: Center(
           child: Text(
             'SignUp Page',
@@ -335,7 +336,8 @@ class _signUpPageState extends State<signUpPage> {
                                   Navigator.pushAndRemoveUntil(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (context) => const HomePage()),
+                                        builder: (context) =>
+                                            const studentHome()),
                                     (Route route) => false,
                                   );
                                 }

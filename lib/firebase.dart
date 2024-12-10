@@ -76,3 +76,35 @@ Stream<List<Map<String, dynamic>>> getResponses(String id) {
       .map((snapshot) => snapshot.docs.map((doc) => {...doc.data()}).toList());
   return data;
 }
+
+Stream<List<Map<String, dynamic>>> getStudentExamById(String id) {
+  return db.collection("exams").snapshots().asyncMap((snapshot) async {
+    List<Map<String, dynamic>> list = [];
+    for (var doc in snapshot.docs) {
+      final responses = await doc.reference
+          .collection("responses")
+          .where("uid", isEqualTo: id)
+          .get();
+
+      if (responses.size > 0) {
+        list.add(doc.data());
+      }
+    }
+    return list;
+  });
+}
+
+Future<List<Map<String, dynamic>>> getStudentResponseById(
+    String EID, String uid) async {
+  final data = await db
+      .collection("exams")
+      .doc(EID)
+      .collection("responses")
+      .where("uid", isEqualTo: uid)
+      .get();
+  List<Map<String, dynamic>> list = [];
+  data.docs.forEach((element) {
+    list.add(element.data());
+  });
+  return list;
+}

@@ -10,7 +10,8 @@ class registerSelectionPage extends StatelessWidget {
     return Scaffold(
         backgroundColor: Color(0xFF2A364E),
         appBar: AppBar(
-          backgroundColor: Color(0xFFE9EDF6), // Hex color #e9edf6
+          backgroundColor: Color(0xFFE9EDF6),
+          foregroundColor: Colors.black, // Hex color #e9edf6
         ),
         body: Center(
           child: Container(

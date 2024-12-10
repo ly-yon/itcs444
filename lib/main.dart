@@ -6,14 +6,13 @@ import 'single_exam_marks.dart';
 import "respond_details.dart";
 import 'firebase.dart';
 import 'package:provider/provider.dart';
-import 'main-2.dart';
+import 'student_home_page.dart';
 import 'authProvider.dart';
 import 'exam_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeApp();
-
   runApp(MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (context) => AuthProvider()),
@@ -28,9 +27,6 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: ExamPage(
-          examId: "wmWhBkINIW6rpCkAF74d",
-        ));
+        debugShowCheckedModeBanner: false, home: homePage());
   }
 }
