@@ -704,7 +704,7 @@ class _t_f_questionState extends State<t_f_question> {
                   title: const Text("True"),
                   leading: Radio<String>(
                     activeColor: Colors.blue,
-                    value: "true",
+                    value: "True",
                     groupValue: widget.data.Answer,
                     onChanged: ((e) {
                       if (e != null) {
@@ -717,7 +717,7 @@ class _t_f_questionState extends State<t_f_question> {
                   title: const Text("False"),
                   leading: Radio<String>(
                     activeColor: Colors.blue,
-                    value: "false",
+                    value: "False",
                     groupValue: widget.data.Answer,
                     onChanged: ((e) {
                       if (e != null) {

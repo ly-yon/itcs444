@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import "authProvider.dart";
-import 'package:provider/provider.dart';
+// import 'authProvider.dart';
+// import 'package:provider/provider.dart';
 
 class ExamPage extends StatefulWidget {
   final String examId;
-
-  const ExamPage({Key? key, required this.examId}) : super(key: key);
+  final String uid;
+  const ExamPage({Key? key, required this.examId, required this.uid})
+      : super(key: key);
 
   @override
   _ExamPageState createState() => _ExamPageState();
@@ -23,7 +24,6 @@ class _ExamPageState extends State<ExamPage> {
   @override
   void initState() {
     super.initState();
-
     fetchExamData();
   }
 
@@ -32,6 +32,10 @@ class _ExamPageState extends State<ExamPage> {
         .collection('exams')
         .doc(widget.examId)
         .get();
+    if (!doc.exists) {
+      print('Exam document does not exist');
+      return;
+    }
     final data = doc.data();
     if (data != null) {
       setState(() {
@@ -61,12 +65,12 @@ class _ExamPageState extends State<ExamPage> {
   }
 
   Future<void> restoreProgress(Map<String, dynamic> data) async {
-    final authProvider = context.watch<AuthProvider>();
+    // String uid = context.watch<AuthProvider>().user?.uid ?? "";
     final progressDoc = await FirebaseFirestore.instance
         .collection('exams')
         .doc(widget.examId)
         .collection('progress')
-        .doc(authProvider.user?.uid ?? "") // Replace with the actual user ID
+        .doc(widget.uid) // Replace with the actual user ID
         .get();
 
     if (progressDoc.exists) {
@@ -108,10 +112,10 @@ class _ExamPageState extends State<ExamPage> {
   }
 
   Future<void> saveProgress() async {
-    final authProvider = context.watch<AuthProvider>();
     if (examData == null) return;
 
     try {
+      // String uid = context.watch<AuthProvider>().user?.uid ?? "";
       // Sanitize answers
       final sanitizedAnswers = answers.map((key, value) {
         return MapEntry(key.toString(), value.toString());
@@ -121,7 +125,7 @@ class _ExamPageState extends State<ExamPage> {
           .collection('exams')
           .doc(widget.examId)
           .collection('progress')
-          .doc(authProvider.user?.uid ?? "") // Replace with actual user ID
+          .doc(widget.uid) // Replace with actual user ID
           .set({
         'time_remaining': timeRemaining.inSeconds,
         'answers': sanitizedAnswers,
@@ -142,19 +146,17 @@ class _ExamPageState extends State<ExamPage> {
     if (examData == null) return;
 
     try {
-      final authProvider = context.watch<AuthProvider>();
       // Prepare the response data
-      String responseId = FirebaseFirestore.instance
-          .collection('responses')
-          .doc()
-          .id; // Generate a unique ID
+      // String responseId = FirebaseFirestore.instance
+      //     .collection('responses')
+      //     .doc()
+      //     .id; // Generate a unique ID
       Map<String, dynamic> response = {
-        'RID': responseId,
+        'RID': widget.uid,
         'answers': [],
         'attempts_taken': (examData?['attempts'] ?? 1),
         'started_date': DateTime.now(),
-        'uid': authProvider.user?.uid ?? "", // Replace with actual user ID
-        'feedback': feedback,
+        'uid': widget.uid, // Replace with actual user ID
       };
 
       // Calculate marks and collect answers
@@ -167,7 +169,7 @@ class _ExamPageState extends State<ExamPage> {
         final correctAnswer = question['answer'];
         final userAnswer = answers[questionId];
 
-        int marks = 0;
+        int? marks = 0;
 
         if (questionType == 'mcq_question' || questionType == 't_f_question') {
           if (userAnswer != null && correctAnswer != null) {
@@ -176,10 +178,10 @@ class _ExamPageState extends State<ExamPage> {
                 ? question['marks']
                 : 0;
           }
-          totalMarks += marks;
+          totalMarks += marks == null ? 0 : marks;
         } else if (questionType == 'short_question' ||
             questionType == 'essay_question') {
-          marks = 0; // Keep marks null for open-ended answers
+          marks = null; // Keep marks null for open-ended answers
         }
 
         response['answers'].add({
@@ -197,14 +199,15 @@ class _ExamPageState extends State<ExamPage> {
           .collection('exams')
           .doc(widget.examId)
           .collection('responses')
-          .doc(responseId)
+          .doc(widget.uid)
           .set(response);
+
       // Clear saved progress from Firestore
       await FirebaseFirestore.instance
           .collection('exams')
           .doc(widget.examId)
           .collection('progress')
-          .doc(authProvider.user?.uid ?? "") // Replace with the actual user ID
+          .doc(widget.uid) // Replace with the actual user ID
           .delete();
 
       // Reset local state

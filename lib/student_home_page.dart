@@ -91,6 +91,10 @@ class studentHome extends StatefulWidget {
 class _studentHomeState extends State<studentHome> {
   int currentPageIndex = 0;
   @override
+  void dispose() {
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
@@ -311,6 +315,7 @@ class _studentHomePageState extends State<studentHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
     return Column(
       children: [
         Container(
@@ -410,7 +415,10 @@ class _studentHomePageState extends State<studentHomePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ExamPage(examId: exam['id']),
+                            builder: (context) => ExamPage(
+                              examId: exam['id'],
+                              uid: authProvider.user!.uid,
+                            ),
                           ),
                         );
                       }
