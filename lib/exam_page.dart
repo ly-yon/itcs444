@@ -13,9 +13,10 @@ class ExamPage extends StatefulWidget {
 
 class _ExamPageState extends State<ExamPage> {
   Map<String, dynamic>? examData;
-  Map<int, dynamic> answers = {};
+  Map<int, dynamic> answers = {}; // Stores the answers by question_id
   late Timer timer;
   Duration timeRemaining = const Duration();
+  bool shuffled = false;
 
   @override
   void initState() {
@@ -29,14 +30,53 @@ class _ExamPageState extends State<ExamPage> {
     if (data != null) {
       setState(() {
         examData = data;
-        timeRemaining = Duration(minutes: data['duration'] ?? 0);
 
-        // Shuffle questions while preserving question_id
-        final questions = List<dynamic>.from(data['questions'] ?? []);
-        questions.shuffle(); // Shuffle the questions
+        // Restore timer and answers if progress exists
+        restoreProgress(data);
+      });
+
+      if (!shuffled) {
+        shuffleQuestions();
+        shuffled = true; // Ensure questions are only shuffled once per session
+      }
+
+      startTimer();
+    }
+  }
+
+  void shuffleQuestions() {
+    if (examData != null) {
+      final questions = List<dynamic>.from(examData!['questions'] ?? []);
+      questions.shuffle();
+      setState(() {
         examData!['questions'] = questions;
       });
-      startTimer();
+    }
+  }
+
+  Future<void> restoreProgress(Map<String, dynamic> data) async {
+    final progressDoc = await FirebaseFirestore.instance
+        .collection('exams')
+        .doc(widget.examId)
+        .collection('progress')
+        .doc('student_user_id') // Replace with the actual user ID
+        .get();
+
+    if (progressDoc.exists) {
+      final progressData = progressDoc.data()!;
+      setState(() {
+        // Restore timer
+        timeRemaining = Duration(seconds: progressData['time_remaining'] ?? (data['duration'] * 60));
+
+        // Restore answers
+        final savedAnswers = progressData['answers'] as Map<String, dynamic>? ?? {};
+        answers = savedAnswers.map((key, value) {
+          return MapEntry(int.parse(key), value); // Convert keys back to int
+        });
+      });
+    } else {
+      // Initialize timer if no progress exists
+      timeRemaining = Duration(minutes: data['duration'] ?? 0);
     }
   }
 
@@ -46,6 +86,11 @@ class _ExamPageState extends State<ExamPage> {
         setState(() {
           timeRemaining -= const Duration(seconds: 1);
         });
+
+        // Save progress every 30 seconds
+        if (timeRemaining.inSeconds % 30 == 0) {
+          saveProgress();
+        }
       } else {
         timer.cancel();
         onSubmit(feedback: 'Time is up!');
@@ -53,9 +98,33 @@ class _ExamPageState extends State<ExamPage> {
     });
   }
 
+  Future<void> saveProgress() async {
+    if (examData == null) return;
+
+    try {
+      // Sanitize answers
+      final sanitizedAnswers = answers.map((key, value) {
+        return MapEntry(key.toString(), value.toString());
+      });
+
+      await FirebaseFirestore.instance
+          .collection('exams')
+          .doc(widget.examId)
+          .collection('progress')
+          .doc('student_user_id') // Replace with actual user ID
+          .set({
+        'time_remaining': timeRemaining.inSeconds,
+        'answers': sanitizedAnswers,
+      }, SetOptions(merge: true));
+    } catch (error) {
+      print('Error saving progress: $error');
+    }
+  }
+
   @override
   void dispose() {
     timer.cancel();
+    saveProgress(); // Save progress when leaving the page
     super.dispose();
   }
 
@@ -112,6 +181,20 @@ class _ExamPageState extends State<ExamPage> {
           .doc(responseId)
           .set(response);
 
+      // Clear saved progress from Firestore
+      await FirebaseFirestore.instance
+          .collection('exams')
+          .doc(widget.examId)
+          .collection('progress')
+          .doc('student_user_id') // Replace with the actual user ID
+          .delete();
+
+      // Reset local state
+      setState(() {
+        answers.clear(); // Clear all answers
+        timeRemaining = Duration(minutes: examData?['duration'] ?? 0); // Reset the timer
+      });
+
       // Decrement attempts
       final remainingAttempts = (examData?['attempts'] ?? 1) - 1;
       await FirebaseFirestore.instance.collection('exams').doc(widget.examId).update({'attempts': remainingAttempts});
@@ -159,7 +242,6 @@ class _ExamPageState extends State<ExamPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Exam Progress Card
             Card(
               color: Colors.grey[200],
               elevation: 3,
@@ -188,7 +270,6 @@ class _ExamPageState extends State<ExamPage> {
               ),
             ),
             const SizedBox(height: 16),
-            // Questions List
             ListView.builder(
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
@@ -207,19 +288,16 @@ class _ExamPageState extends State<ExamPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Question Text
                           Text(
                             '${index + 1}. ${question['q_name']}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           const SizedBox(height: 8),
-                          // Display Marks
                           Text(
                             'Marks: ${question['marks'] ?? 0}',
                             style: const TextStyle(color: Colors.grey, fontSize: 14),
                           ),
                           const SizedBox(height: 8),
-                          // Question Type Logic
                           if (questionType == 'mcq_question') ...[
                             Column(
                               children: (question['options'] as List<dynamic>)
@@ -286,15 +364,18 @@ class _ExamPageState extends State<ExamPage> {
                 child: const Text(
                   'Submit',
                   style: TextStyle(
-                                        fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
               ),
             ),
           ],
-        ),
+  ),
       ),
-    );
+
+      );
   }
 }
+    
+
