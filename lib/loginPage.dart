@@ -208,6 +208,9 @@ class _loginPageState extends State<loginPage> {
                               //     _emailController.text.trim(),
                               //     _passwordController.text.trim());
                               final authProvider = context.read<AuthProvider>();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Signing In...")),
+                              );
                               final isAuth = await authProvider.login(
                                   _emailController.text.trim(),
                                   _passwordController.text.trim());
@@ -230,6 +233,12 @@ class _loginPageState extends State<loginPage> {
                                     (Route route) => false,
                                   );
                                 }
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          "Error..In Signing IN.. Try Again")),
+                                );
                               }
                             }
                           },

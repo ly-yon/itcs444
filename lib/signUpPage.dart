@@ -318,6 +318,9 @@ class _signUpPageState extends State<signUpPage> {
                               // _nameController.text.trim(),
                               // _selectedRole!);
                               final authProvider = context.read<AuthProvider>();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Signing UP...")),
+                              );
                               final bool isAuth = await authProvider.signUp(
                                   _emailController.text.trim(),
                                   _passwordController.text.trim(),
@@ -341,6 +344,12 @@ class _signUpPageState extends State<signUpPage> {
                                     (Route route) => false,
                                   );
                                 }
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          "Error..In Signing UP.. Try Again")),
+                                );
                               }
                             }
                           },
